@@ -1,0 +1,2 @@
+# Allow members of group build to execute any command without authentication
+%${ACM_GROUP}	ALL=(ALL:ALL) NOPASSWD:SETENV: /update-ssl
