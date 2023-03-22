@@ -83,8 +83,7 @@ RUN chmod 0640 /etc/sudoers.d/00-update-ssl && \
     chmod u=rwX,go=r "${PENTAHO_TOMCAT}/conf"/* && \
     rm -f "${PENTAHO_SERVER}/promptuser.sh" "${PENTAHO_SERVER}"/*.bat "${PENTAHO_SERVER}"/*.js && \
     chmod 0755 "${PENTAHO_SERVER}"/*.sh  && \
-    chmod a+r "${PENTAHO_SERVER}/pentaho-solutions/system/repository.spring.xml" && \
-    cp /app/pentaho/pentaho-server/tomcat/webapps/pentaho/WEB-INF/lib/* /app/pentaho/pentaho-server/tomcat/lib/
+    chmod a+r "${PENTAHO_SERVER}/pentaho-solutions/system/repository.spring.xml" 
 
 USER "${PENTAHO_USER}"
 
