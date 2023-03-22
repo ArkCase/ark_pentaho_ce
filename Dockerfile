@@ -53,12 +53,7 @@ LABEL ORG="Armedia LLC" \
 RUN mkdir -p "${BASE_DIR}" && \
     groupadd --system --gid "${ACM_GID}" "${ACM_GROUP}" && \
     groupadd --system --gid "${PENTAHO_GID}" "${PENTAHO_GROUP}" && \
-    useradd --system --uid "${PENTAHO_UID}" --gid "${PENTAHO_GID}" --groups "${ACM_GROUP}" --create-home --home-dir "${PENTAHO_HOME}" "${PENTAHO_USER}" && \
-    mkdir -p "${LOGS_DIR}" && \
-    mkdir -p "${DATA_DIR}" && \
-    mkdir -p "${WORK_DIR}" && \
-    mkdir -p "${TEMP_DIR}" && \
-    chown -R "${PENTAHO_USER}:${PENTAHO_GROUP}" "${BASE_DIR}"
+    useradd --system --uid "${PENTAHO_UID}" --gid "${PENTAHO_GID}" --groups "${ACM_GROUP}" --create-home --home-dir "${PENTAHO_HOME}" "${PENTAHO_USER}" 
 
 COPY --from=src --chown=${PENTAHO_USER}:${PENTAHO_GROUP} /home/pentaho/app/pentaho "${PENTAHO_HOME}/"
 COPY --from=src --chown=${PENTAHO_USER}:${PENTAHO_GROUP} /home/pentaho/app/pentaho-pdi "${PENTAHO_PDI_HOME}/"
@@ -92,8 +87,8 @@ RUN chmod 0640 /etc/sudoers.d/00-update-ssl && \
 
 USER "${PENTAHO_USER}"
 
-#VOLUME [ "${DATA_DIR}" ]
-#VOLUME [ "${LOGS_DIR}" ]
+VOLUME [ "${DATA_DIR}" ]
+VOLUME [ "${LOGS_DIR}" ]
 
 EXPOSE "${PENTAHO_PORT}"
 WORKDIR "${PENTAHO_SERVER}"
