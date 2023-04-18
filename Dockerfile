@@ -1,20 +1,25 @@
-ARG BASE_REGISTRY
+###########################################################################################################
+#
+# How to build:
+#
+# docker build -t arkcase/pentaho-ce:latest .
+#
+###########################################################################################################
+
+ARG PUBLIC_REGISTRY="public.ecr.aws"
 ARG BASE_REPO="arkcase/base"
 ARG BASE_TAG="8.7.0"
 ARG VER="9.4.0.0-343"
 ARG PENTAHO_INSTALL_REPO="arkcase/pentaho-ce-install"
 
-FROM "${BASE_REGISTRY}/${PENTAHO_INSTALL_REPO}:${VER}" as src
+FROM "${PUBLIC_REGISTRY}/${PENTAHO_INSTALL_REPO}:${VER}" as src
 
-###########################################################################################################
-#
-# How to build:
-#
-# docker build -t ${BASE_REGISTRY}/arkcase/pentaho-ce:latest .
-#
-###########################################################################################################
+ARG PUBLIC_REGISTRY
+ARG BASE_REPO
+ARG BASE_TAG
+ARG VER
 
-FROM "${BASE_REGISTRY}/${BASE_REPO}:${BASE_TAG}"
+FROM "${PUBLIC_REGISTRY}/${BASE_REPO}:${BASE_TAG}"
 
 ARG VER
 
