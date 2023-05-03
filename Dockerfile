@@ -11,17 +11,20 @@ ARG BASE_REPO="arkcase/base"
 ARG BASE_TAG="8.7.0"
 ARG VER="9.4.0.0-343"
 ARG PENTAHO_INSTALL_REPO="arkcase/pentaho-ce-install"
+ARG LB_VER="4.20.0"
+ARG LB_SRC="https://github.com/liquibase/liquibase/releases/download/v${LB_VER}/liquibase-${LB_VER}.tar.gz"
 
 FROM "${PUBLIC_REGISTRY}/${PENTAHO_INSTALL_REPO}:${VER}" as src
 
 ARG PUBLIC_REGISTRY
 ARG BASE_REPO
 ARG BASE_TAG
-ARG VER
 
 FROM "${PUBLIC_REGISTRY}/${BASE_REPO}:${BASE_TAG}"
 
 ARG VER
+ARG LB_VER
+ARG LB_SRC
 
 ENV JAVA_HOME="/usr/lib/jvm/jre-11-openjdk"
 
@@ -34,6 +37,8 @@ ENV LOGS_DIR="${BASE_DIR}/logs"
 ENV DATA_DIR="${BASE_DIR}/data"
 ENV WORK_DIR="${DATA_DIR}/work"
 ENV TEMP_DIR="${DATA_DIR}/temp"
+ENV LB_DIR="${BASE_DIR}/lb"
+ENV LB_TAR="${BASE_DIR}/lb.tar.gz"
 ENV PENTAHO_HOME="${BASE_DIR}/pentaho"
 ENV PENTAHO_PDI_HOME="${BASE_DIR}/pentaho-pdi"
 ENV PENTAHO_SERVER="${PENTAHO_HOME}/pentaho-server"
@@ -89,6 +94,28 @@ RUN chmod 0640 /etc/sudoers.d/00-update-ssl && \
     rm -f "${PENTAHO_SERVER}/promptuser.sh" "${PENTAHO_SERVER}"/*.bat "${PENTAHO_SERVER}"/*.js && \
     chmod 0755 "${PENTAHO_SERVER}"/*.sh  && \
     chmod a+r "${PENTAHO_SERVER}/pentaho-solutions/system/repository.spring.xml" 
+
+# Install Liquibase, and add all the drivers
+RUN curl -L -o "${LB_TAR}" "${LB_SRC}" && \
+    mkdir -p "${LB_DIR}" && \
+    tar -C "${LB_DIR}" -xzvf "${LB_TAR}" && \
+    rm -rf "${LB_TAR}" && \
+    cd "${LB_DIR}" && \
+    rm -fv \
+        "internal/lib/mssql-jdbc.jar" \
+        "internal/lib/ojdbc8.jar" \
+        "internal/lib/mariadb-java-client.jar" \
+        "internal/lib/postgresql.jar" \
+        && \
+    ln -sv \
+        "${PENTAHO_TOMCAT}/lib"/mysql-connector-j-*.jar \
+        "${PENTAHO_TOMCAT}/lib"/mariadb-java-client-*.jar \
+        "${PENTAHO_TOMCAT}/lib"/mssql-jdbc-*.jar \
+        "${PENTAHO_TOMCAT}/lib"/ojdbc11-*.jar \
+        "${PENTAHO_TOMCAT}/lib"/postgresql-*.jar \
+        "internal/lib"
+COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} liquibase.properties "${LB_DIR}/"
+COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} "sql/${VER}" "${LB_DIR}/pentaho/"
 
 USER "${PENTAHO_USER}"
 

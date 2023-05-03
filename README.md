@@ -6,5 +6,5 @@ Pentaho Documentation is available at https://www.hitachivantara.com/en-us/produ
 
 ## How to build:
 
-docker build -t ${BASE_URL}/arkcase-pentaho:latest
+docker build -t arkcase/pentaho-ce:latest
 
