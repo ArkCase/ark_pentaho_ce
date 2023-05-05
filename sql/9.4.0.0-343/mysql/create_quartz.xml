@@ -6,7 +6,7 @@
 	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
 						http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd">
 
-	<changeSet id="pentaho-quartz-mysql" author="arkcase.container" runInTransaction="false" dbms="mysql">
+	<changeSet id="pentaho-quartz-mysql" author="arkcase.container" runInTransaction="false" dbms="mysql,mariadb">
 		<sql>
 			CREATE TABLE QRTZ5_JOB_DETAILS
 			(
