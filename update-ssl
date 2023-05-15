@@ -1,8 +1,10 @@
 #!/bin/bash
+[ "$(/usr/bin/id -u)" -eq 0 ] || exec /usr/bin/sudo --non-interactive --preserve-env "${0}" "${@}"
+
 set -euo pipefail
 
 say() {
-	echo -e "$(date -u -Isec): ${@}"
+	echo -e "$(/usr/bin/date -u -Isec): ${@}"
 }
 
 fail() {
@@ -31,6 +33,27 @@ is_valid_port() {
 	return 0
 }
 
+validate_cert() {
+	local CERT="${1}"
+	[ -e "${CERT}" ] || return 1
+	[ -f "${CERT}" ] || return 1
+	[ -r "${CERT}" ] || return 1
+	[ -s "${CERT}" ] || return 1
+	/usr/bin/openssl x509 -noout -text -in "${CERT}" &>/dev/null || return ${?}
+	return 0
+}
+
+is_ca() {
+	local CERT="${1}"
+	validate_cert "${CERT}" || return ${?}
+	# Is the certificate a CA certificate of some kind?
+	/usr/bin/openssl x509 -noout -ext basicConstraints -in "${CERT}" | \
+		/usr/bin/tail -n +2 | \
+		/usr/bin/sed -e 's;, ;\n;g' -e 's;^\s*;;g' | \
+		/usr/bin/grep -qi "^CA:TRUE" || return ${?}
+	return 0
+}
+
 download_authorities() {
 	local HOST="${1}"
 	local SNI="${2}"
@@ -45,42 +68,35 @@ download_authorities() {
 	CERT_BASE_NAME+="${HOST}:${PORT}"
 	(
 		set -euo pipefail
-		SPLIT_DIR="$(mktemp -d)"
+		SPLIT_DIR="$(/usr/bin/mktemp -d)"
 		cd "${SPLIT_DIR}"
-		csplit \
-			<(openssl s_client -connect "${HOST}:${PORT}" "${SNI_FLAGS[@]}" -showcerts </dev/null 2>/dev/null) \
+		/usr/bin/csplit \
+			<(/usr/bin/openssl s_client -connect "${HOST}:${PORT}" "${SNI_FLAGS[@]}" -showcerts </dev/null 2>/dev/null) \
 			'/BEGIN CERTIFICATE/' '{*}'
 		RC=1
 		for n in * ; do
 			# Leave only the certificate bits in each split out file
-			sed -i -e '/^-\+END CERTIFICATE-\+$/q' "${n}"
+			/usr/bin/sed -i -e '/^-\+END CERTIFICATE-\+$/q' "${n}"
 
 			# Keep only the files that contain certificate bits
-			grep -q "END CERTIFICATE" "${n}" || continue
+			/usr/bin/grep -q "END CERTIFICATE" "${n}" || continue
 
 			# Is the certificate a CA certificate of some kind?
-			openssl x509 -noout -ext keyUsage -in "${n}" | \
-				tail -n +2 | \
-				sed -e 's;, ;\n;g' -e 's;^\s*;;g' | \
-				grep -qi "^Certificate Sign" || continue
+			is_ca "${n}" || continue
 
 			# The certificate is desirable ... stow it for trust!
-			cp -vf "${n}" "${CERT_BASE_NAME}.${n}.pem"
+			/usr/bin/cp -vf "${n}" "${CERT_BASE_NAME}.${n}.pem"
 			RC=0
 		done
 		[ ${RC} -eq 0 ] || say "\tNone of the candidate certificates were CAs"
 		cd /
-		rm -rf "${SPLIT_DIR}" &>/dev/null
+		/usr/bin/rm -rf "${SPLIT_DIR}" &>/dev/null
 		exit ${RC}
 	)
 	return ${?}
 }
 
-[ "$(id -u)" -eq 0 ] || exec /usr/bin/sudo --non-interactive --preserve-env "${0}" "${@}"
-
-[ -v BASE_DIR ] || BASE_DIR="/app"
-[ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
-[ -v INIT_SSL_DIR ] || INIT_SSL_DIR="${INIT_DIR}/ssl"
+[ -v SSL_TRUSTS_DIR ] || SSL_TRUSTS_DIR="/.ssl-trusts"
 
 INSTALLED="false"
 
@@ -98,7 +114,7 @@ if [[ "${LDAP_URL}" =~ ^ldap(s)?://([^:/]+)(:[0-9]+)? ]] ; then
 		[ -n "${BASH_REMATCH[1]}" ] && LDAP_PORT=636
 	else
 		# The port may contain leading colons and zeroes, so remove them
-		LDAP_PORT="$(sed -e 's;^:*;;g' -e 's;^0*;;g' < <(echo -n "${LDAP_PORT}"))"
+		LDAP_PORT="$(/usr/bin/sed -e 's;^:*;;g' -e 's;^0*;;g' < <(echo -n "${LDAP_PORT}"))"
 	fi
 
 	# 1) Try to fetch the actual certificates served up by Step-CA. If this fails,
@@ -107,7 +123,7 @@ if [[ "${LDAP_URL}" =~ ^ldap(s)?://([^:/]+)(:[0-9]+)? ]] ; then
 	# environment lacks this, this is fine - they'll just have to manage the CAs
 	# manually by some other means, and use the INIT_SSL_SERVERS variable to do so
 	say "Fetching the Step-CA root certificate from host ${LDAP_HOST}"
-	if curl -kL --connect-timeout 5 -o "${ANCHORS}/step-ca.crt" "https://${LDAP_HOST}:9000/roots.pem" 2>&1 ; then
+	if /usr/bin/curl -kL --connect-timeout 5 -o "${ANCHORS}/step-ca.crt" "https://${LDAP_HOST}:9000/roots.pem" 2>&1 ; then
 		say "\tFetched the Step-CA root certificate from [${LDAP_HOST}]"
 		INSTALLED="true"
 	else
@@ -124,54 +140,62 @@ else
 	say "LDAP URL [${LDAP_URL}] couldn't be parsed properly, won't try to fetch its certificates"
 fi
 
-if [ -d "${INIT_SSL_DIR}" ] ; then
-	REPLACE_FLAG=""
-	[ -v INIT_SSL_REPLACE ] || INIT_SSL_REPLACE="false"
-	"$(to_boolean "${INIT_SSL_REPLACE}")" && REPLACE_FLAG="u"
+if [ -d "${SSL_TRUSTS_DIR}" ] ; then
+	say "Deploying the common trusted certificates from [${SSL_TRUSTS_DIR}]"
+	SSL_TRUSTS_DIR="$(/usr/bin/readlink -f "${SSL_TRUSTS_DIR}")"
 
-	say "Deploying the trusted certificates"
-
-	[ -z "${REPLACE_FLAG}" ] || say "WARNING: will replace any existing files during the certificate copy"
-
-	#
-	# We use this approach b/c this will only take regular files (no symlinks!!). This
-	# is important for security purposes. It will also not clobber existing files - again,
-	# for security purposes.
-	#
-	( cd "${INIT_SSL_DIR}" && /usr/bin/find . -type f | /usr/bin/sort ) |  \
-		( cd "${INIT_SSL_DIR}" && /usr/bin/cpio -p${REPLACE_FLAG}madv "${SSL_TARGET}" ) | \
-		/usr/bin/sed -e 's;^;\t;g'
-	INSTALLED="true"
-fi
-
-if [ -v INIT_SSL_SERVERS ] ; then
-	# The INIT_SSL_SERVERS variable is a comma-separated list of coordinates
-	# in the form [serverName@]serverAddressOrHostname:port, or in the form
-	# of http/https URLS, from where SSL CA certificates should be downloaded
-	# and added to the trust store
-	readarray -d "," -t SERVERS < <(echo -n "${INIT_SSL_SERVERS}")
-	for SERVER in "${SERVERS[@]}" ; do
-		[ -n "${SERVER}" ] || continue
-		say "Downloading additional certificates from ${SERVER} ..."
-		if [[ "${SERVER}" =~ ^(([^@]+)@)?(([^:]+):([0-9]+))$ ]] ; then
-			SERVER_NAME="${BASH_REMATCH[2]}"
-			HOST_NAME="${BASH_REMATCH[4]}"
-			PORT="${BASH_REMATCH[5]}"
-			if [ -n "${SERVER_NAME}" ] ; then
-				is_valid_hostname "${SERVER_NAME}" || fail "\tInvalid server name [${SERVER_NAME}] in spec: [${SERVER}]"
-			fi
-			is_valid_hostname "${HOST_NAME}" || fail "\tInvalid host name [${HOST_NAME}] in spec: [${SERVER}]"
-			is_valid_port "${PORT}" || fail "\tInvalid port number [${PORT}] in spec: [${SERVER}]"
-			download_authorities "${HOST_NAME}" "${SERVER_NAME}" "${PORT}" "${ANCHORS}" || fail "\tFailed to download the certificate from [${SERVER}]"
-		elif [[ "${SERVER}" =~ ^https?://.*$ ]] ; then
-			# It's an HTTP URL, so fetch it from there
-			read SUM rest < <(echo -n "${SERVER}" | md5sum)
-			/usr/bin/curl -kL -o "${ANCHORS}/downloaded-${SUM}.crt" "${SERVER}" || fail "\tFailed to download the certificate from [${SERVER}]"
-		else
-			fail "\tInvalid certificate server spec: [${SERVER}]"
+	while read cert ; do
+		CERT="${cert##*/}"
+		if [ -f "${CERT}" ] ; then
+			say "\tWARNING: The certificate [${CERT}] is not a regular file, skipping"
+			continue
 		fi
-		INSTALLED="true"
-	done
+
+		case "${CERT,,}" in
+			# If the data is an actual certificate, copy it verbatim
+			*.pem )
+				say "\tDeploying certificate [${CERT}]..."
+				validate_cert "${cert}" || fail "\tThe certificate [${CERT}] is not a valid PEM-encoded X.509 certificate"
+				is_ca "${cert}" || { say "\tWARNING: Certificate [${CERT}] is not a CA, ignoring" ; continue ; }
+				/usr/bin/cp -f "${cert}" "${ANCHORS}"
+				INSTALLED="true"
+				;;
+
+			# If the data is a URL, then try to pull it down and put the resulting file into
+			# the SSL_TARGET location using ${CERT} as the name
+			*.url )
+				URL="$(/usr/bin/cat "${cert}")"
+				[[ "${URL}" =~ ^([^:/?#]+)://([^/?#]*)?([^?#]*)([?]([^#]*))?(#(.*))?$ ]] || fail "\tThe certificate [${CERT}] is invalid - the URL syntax is invalid: [${URL}]"
+				say "\tDownloading the certificate [${CERT}] from [${URL}]..."
+				TMPFILE="$(/usr/bin/mktemp)"
+				/usr/bin/curl -kL -o "${TMPFILE}" "${URL}" || fail "\tFailed to download the certificate [${CERT}] from the URL [${URL}]"
+				validate_cert "${TMPFILE}" || fail "\tThe URL from [${CERT}] did not result in downloading a viable X.509 certificate"
+				is_ca "${TMPFILE}" || { say "\tWARNING: Certificate [${CERT}] is not a CA, ignoring" ; continue ; }
+				/usr/bin/mv -vf "${TMPFILE}" "${ANCHORS}"
+				INSTALLED="true"
+				;;
+
+			*.ssl )
+				SERVER="$(/usr/bin/cat "${cert}")"
+				[[ "${SERVER}" =~ ^(([^@]+)@)?(([^:]+):([0-9]+))$ ]] || fail "\tThe certificate [${CERT}] is invalid - the SSL server string [${SERVER}] did not match the required pattern ([serverName@]hostNameOrIP:port)"
+				SERVER_NAME="${BASH_REMATCH[2]}"
+				HOST_NAME="${BASH_REMATCH[4]}"
+				PORT="${BASH_REMATCH[5]}"
+				if [ -n "${SERVER_NAME}" ] ; then
+					is_valid_hostname "${SERVER_NAME}" || fail "\tInvalid server name [${SERVER_NAME}] in spec [${SERVER}] from [${CERT}]"
+				fi
+				is_valid_hostname "${HOST_NAME}" || fail "\tInvalid host name [${HOST_NAME}] in spec: [${SERVER}] from [${CERT}]"
+				is_valid_port "${PORT}" || fail "\tInvalid port number [${PORT}] in spec: [${SERVER}] from [${CERT}]"
+				download_authorities "${HOST_NAME}" "${SERVER_NAME}" "${PORT}" "${ANCHORS}" || fail "\tFailed to download the certificate from [${SERVER}] from [${CERT}]"
+				INSTALLED="true"
+				;;
+
+			* )
+				say "\tWARNING: Don't know how to handle certificate [${CERT}], skipping"
+				continue
+				;;
+		esac
+	done < <(/usr/bin/find "${SSL_TRUSTS_DIR}" -mindepth 1 -maxdepth 1 -name "ssl-trust-*.*" | /usr/bin/sort)
 fi
 
 if ! "${INSTALLED}" ; then
