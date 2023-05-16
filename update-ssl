@@ -54,6 +54,24 @@ is_ca() {
 	return 0
 }
 
+install_chain() {
+	local CERT_BASE_NAME="${1}"
+	local DEST="$(/usr/bin/readlink -f "$(/usr/bin/mktemp -d)")"
+	( cd "${DEST}" && /usr/bin/csplit /dev/stdin '/BEGIN CERTIFICATE/' '{*}' ) || return $?
+	while read n ; do
+		# Leave only the certificate bits in each split out file
+		/usr/bin/sed -i -e '/^-\+END CERTIFICATE-\+$/q' "${n}"
+
+		# Keep only the files that contain certificate bits
+		/usr/bin/grep -q "END CERTIFICATE" "${n}" && \
+			is_ca "${n}" && \
+			/usr/bin/mv -vf "${n}" "${ANCHORS}/${CERT_BASE_NAME}.${n##*/}.pem"
+
+		rm -f "${n}" &>/dev/null
+	done < <(/usr/bin/find "${DEST}" -mindepth 1 -maxdepth 1 -type f -name 'xx*')
+	rm -rf "${DEST}"
+}
+
 download_authorities() {
 	local HOST="${1}"
 	local SNI="${2}"
@@ -66,34 +84,11 @@ download_authorities() {
 	local CERT_BASE_NAME="${TARGET}/${SNI}"
 	[ -n "${SNI}" ] && CERT_BASE_NAME+="@"
 	CERT_BASE_NAME+="${HOST}:${PORT}"
-	(
-		set -euo pipefail
-		SPLIT_DIR="$(/usr/bin/mktemp -d)"
-		cd "${SPLIT_DIR}"
-		/usr/bin/csplit \
-			<(/usr/bin/openssl s_client -connect "${HOST}:${PORT}" "${SNI_FLAGS[@]}" -showcerts </dev/null 2>/dev/null) \
-			'/BEGIN CERTIFICATE/' '{*}'
-		RC=1
-		for n in * ; do
-			# Leave only the certificate bits in each split out file
-			/usr/bin/sed -i -e '/^-\+END CERTIFICATE-\+$/q' "${n}"
 
-			# Keep only the files that contain certificate bits
-			/usr/bin/grep -q "END CERTIFICATE" "${n}" || continue
-
-			# Is the certificate a CA certificate of some kind?
-			is_ca "${n}" || continue
-
-			# The certificate is desirable ... stow it for trust!
-			/usr/bin/cp -vf "${n}" "${CERT_BASE_NAME}.${n}.pem"
-			RC=0
-		done
-		[ ${RC} -eq 0 ] || say "\tNone of the candidate certificates were CAs"
-		cd /
-		/usr/bin/rm -rf "${SPLIT_DIR}" &>/dev/null
-		exit ${RC}
-	)
-	return ${?}
+	/usr/bin/openssl s_client -connect "${HOST}:${PORT}" \
+		"${SNI_FLAGS[@]}" -showcerts </dev/null 2>/dev/null | \
+		install_chain "${CERT_BASE_NAME}"
+	return 0
 }
 
 [ -v SSL_TRUSTS_DIR ] || SSL_TRUSTS_DIR="/.ssl-trusts"
@@ -123,7 +118,7 @@ if [[ "${LDAP_URL}" =~ ^ldap(s)?://([^:/]+)(:[0-9]+)? ]] ; then
 	# environment lacks this, this is fine - they'll just have to manage the CAs
 	# manually by some other means, and use the INIT_SSL_SERVERS variable to do so
 	say "Fetching the Step-CA root certificate from host ${LDAP_HOST}"
-	if /usr/bin/curl -kL --connect-timeout 5 -o "${ANCHORS}/step-ca.crt" "https://${LDAP_HOST}:9000/roots.pem" 2>&1 ; then
+	if /usr/bin/curl -kL --connect-timeout 5 -o >(install_chain "step-ca") "https://${LDAP_HOST}:9000/roots.pem" 2>&1 ; then
 		say "\tFetched the Step-CA root certificate from [${LDAP_HOST}]"
 		INSTALLED="true"
 	else
@@ -155,10 +150,7 @@ if [ -d "${SSL_TRUSTS_DIR}" ] ; then
 			# If the data is an actual certificate, copy it verbatim
 			*.pem )
 				say "\tDeploying certificate [${CERT}]..."
-				validate_cert "${cert}" || fail "\tThe certificate [${CERT}] is not a valid PEM-encoded X.509 certificate"
-				is_ca "${cert}" || { say "\tWARNING: Certificate [${CERT}] is not a CA, ignoring" ; continue ; }
-				/usr/bin/cp -f "${cert}" "${ANCHORS}"
-				INSTALLED="true"
+				install_chain "${CERT%.*}" < "${cert}"
 				;;
 
 			# If the data is a URL, then try to pull it down and put the resulting file into
@@ -168,11 +160,7 @@ if [ -d "${SSL_TRUSTS_DIR}" ] ; then
 				[[ "${URL}" =~ ^([^:/?#]+)://([^/?#]*)?([^?#]*)([?]([^#]*))?(#(.*))?$ ]] || fail "\tThe certificate [${CERT}] is invalid - the URL syntax is invalid: [${URL}]"
 				say "\tDownloading the certificate [${CERT}] from [${URL}]..."
 				TMPFILE="$(/usr/bin/mktemp)"
-				/usr/bin/curl -kL -o "${TMPFILE}" "${URL}" || fail "\tFailed to download the certificate [${CERT}] from the URL [${URL}]"
-				validate_cert "${TMPFILE}" || fail "\tThe URL from [${CERT}] did not result in downloading a viable X.509 certificate"
-				is_ca "${TMPFILE}" || { say "\tWARNING: Certificate [${CERT}] is not a CA, ignoring" ; continue ; }
-				/usr/bin/mv -vf "${TMPFILE}" "${ANCHORS}"
-				INSTALLED="true"
+				/usr/bin/curl -kL -o >(install_chain "${CERT%.*}") "${URL}" || fail "\tFailed to download the certificate [${CERT}] from the URL [${URL}]"
 				;;
 
 			*.ssl )
@@ -187,7 +175,6 @@ if [ -d "${SSL_TRUSTS_DIR}" ] ; then
 				is_valid_hostname "${HOST_NAME}" || fail "\tInvalid host name [${HOST_NAME}] in spec: [${SERVER}] from [${CERT}]"
 				is_valid_port "${PORT}" || fail "\tInvalid port number [${PORT}] in spec: [${SERVER}] from [${CERT}]"
 				download_authorities "${HOST_NAME}" "${SERVER_NAME}" "${PORT}" "${ANCHORS}" || fail "\tFailed to download the certificate from [${SERVER}] from [${CERT}]"
-				INSTALLED="true"
 				;;
 
 			* )
@@ -196,11 +183,6 @@ if [ -d "${SSL_TRUSTS_DIR}" ] ; then
 				;;
 		esac
 	done < <(/usr/bin/find "${SSL_TRUSTS_DIR}" -mindepth 1 -maxdepth 1 -name "ssl-trust-*.*" | /usr/bin/sort)
-fi
-
-if ! "${INSTALLED}" ; then
-	say "No certificates to be installed"
-	exit 0
 fi
 
 say "Updating the trusted certificates"
