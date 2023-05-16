@@ -7,6 +7,10 @@ say() {
 	echo -e "$(/usr/bin/date -u -Isec): ${@}"
 }
 
+err() {
+	say "ERROR: ${@}" 1>&2
+}
+
 fail() {
 	say "${@}" 1>&2
 	exit ${EXIT_CODE:-1}
@@ -57,22 +61,27 @@ is_ca() {
 install_chain() {
 	local CERT_BASE_NAME="${1}"
 	local DEST="$(/usr/bin/readlink -f "$(/usr/bin/mktemp -d)")"
-	( cd "${DEST}" && /usr/bin/csplit /dev/stdin '/BEGIN CERTIFICATE/' '{*}' ) || return $?
+	( cd "${DEST}" && /usr/bin/csplit /dev/stdin '/BEGIN CERTIFICATE/' '{*}' &>/dev/null ) || return $?
 	while read n ; do
 		# Leave only the certificate bits in each split out file
 		/usr/bin/sed -i -e '/^-\+END CERTIFICATE-\+$/q' "${n}"
 
 		# Keep only the files that contain certificate bits
-		/usr/bin/grep -q "END CERTIFICATE" "${n}" && \
-			is_ca "${n}" && \
-			/usr/bin/mv -vf "${n}" "${ANCHORS}/${CERT_BASE_NAME}.${n##*/}.pem"
-
-		rm -f "${n}" &>/dev/null
+		if /usr/bin/grep -q "END CERTIFICATE" "${n}" && is_ca "${n}" ; then
+			local SUBJECT="$(/usr/bin/openssl x509 -noout -subject -in "${n}" | /usr/bin/sed -e 's;^subject=;;g')"
+			local ISSUER="$(/usr/bin/openssl x509 -noout -issuer -in "${n}" | /usr/bin/sed -e 's;^issuer=;;g')"
+			say "\tInstalling certificate: ${SUBJECT}"
+			[ "${SUBJECT}" != "${ISSUER}" ] && say "\tIssued by: ${ISSUER}"
+			local TGT_NAME="${CERT_BASE_NAME}.${n##*/}.pem"
+			/usr/bin/mv -f "${n}" "${ANCHORS}/${TGT_NAME}"
+		else
+			/usr/bin/rm -f "${n}" &>/dev/null
+		fi
 	done < <(/usr/bin/find "${DEST}" -mindepth 1 -maxdepth 1 -type f -name 'xx*')
-	rm -rf "${DEST}"
+	/usr/bin/rm -rf "${DEST}"
 }
 
-download_authorities() {
+download_from_port() {
 	local HOST="${1}"
 	local SNI="${2}"
 	local PORT="${3}"
@@ -89,6 +98,15 @@ download_authorities() {
 		"${SNI_FLAGS[@]}" -showcerts </dev/null 2>/dev/null | \
 		install_chain "${CERT_BASE_NAME}"
 	return 0
+}
+
+download_chain() {
+	local CERT_BASE_NAME="${1}"
+	local URL="${2}"
+	OUT="$(/usr/bin/curl -kL --connect-timeout 5 -o >(install_chain "${CERT_BASE_NAME}") "${URL}" 2>&1)"
+	RC=${?}
+	[ ${RC} -ne 0 ] && err "Failed to download the certificates from [${URL}] (rc=${RC}):\n${OUT}"
+	return ${RC}
 }
 
 [ -v SSL_TRUSTS_DIR ] || SSL_TRUSTS_DIR="/.ssl-trusts"
@@ -118,7 +136,7 @@ if [[ "${LDAP_URL}" =~ ^ldap(s)?://([^:/]+)(:[0-9]+)? ]] ; then
 	# environment lacks this, this is fine - they'll just have to manage the CAs
 	# manually by some other means, and use the INIT_SSL_SERVERS variable to do so
 	say "Fetching the Step-CA root certificate from host ${LDAP_HOST}"
-	if /usr/bin/curl -kL --connect-timeout 5 -o >(install_chain "step-ca") "https://${LDAP_HOST}:9000/roots.pem" 2>&1 ; then
+	if download_chain "step-ca" "https://${LDAP_HOST}:9000/roots.pem" ; then
 		say "\tFetched the Step-CA root certificate from [${LDAP_HOST}]"
 		INSTALLED="true"
 	else
@@ -126,7 +144,7 @@ if [[ "${LDAP_URL}" =~ ^ldap(s)?://([^:/]+)(:[0-9]+)? ]] ; then
 	fi
 
 	# 2) Try to see if the LDAP server itself is serving up its CA certificates
-	if download_authorities "${LDAP_HOST}" "" "${LDAP_PORT}" "${ANCHORS}" ; then
+	if download_from_port "${LDAP_HOST}" "" "${LDAP_PORT}" "${ANCHORS}" ; then
 		INSTALLED="true"
 	else
 		say "WARNING: Failed to fetch the certificates from host ${LDAP_HOST}, port ${LDAP_PORT}"
@@ -141,7 +159,7 @@ if [ -d "${SSL_TRUSTS_DIR}" ] ; then
 
 	while read cert ; do
 		CERT="${cert##*/}"
-		if [ -f "${CERT}" ] ; then
+		if [ ! -f "${cert}" ] ; then
 			say "\tWARNING: The certificate [${CERT}] is not a regular file, skipping"
 			continue
 		fi
@@ -156,15 +174,14 @@ if [ -d "${SSL_TRUSTS_DIR}" ] ; then
 			# If the data is a URL, then try to pull it down and put the resulting file into
 			# the SSL_TARGET location using ${CERT} as the name
 			*.url )
-				URL="$(/usr/bin/cat "${cert}")"
+				URL="$(<"${cert}")"
 				[[ "${URL}" =~ ^([^:/?#]+)://([^/?#]*)?([^?#]*)([?]([^#]*))?(#(.*))?$ ]] || fail "\tThe certificate [${CERT}] is invalid - the URL syntax is invalid: [${URL}]"
 				say "\tDownloading the certificate [${CERT}] from [${URL}]..."
-				TMPFILE="$(/usr/bin/mktemp)"
-				/usr/bin/curl -kL -o >(install_chain "${CERT%.*}") "${URL}" || fail "\tFailed to download the certificate [${CERT}] from the URL [${URL}]"
+				download_chain "${CERT%.*}" "${URL}" || fail "\tFailed to download the certificate [${CERT}] from the URL [${URL}]"
 				;;
 
 			*.ssl )
-				SERVER="$(/usr/bin/cat "${cert}")"
+				SERVER="$(<"${cert}")"
 				[[ "${SERVER}" =~ ^(([^@]+)@)?(([^:]+):([0-9]+))$ ]] || fail "\tThe certificate [${CERT}] is invalid - the SSL server string [${SERVER}] did not match the required pattern ([serverName@]hostNameOrIP:port)"
 				SERVER_NAME="${BASH_REMATCH[2]}"
 				HOST_NAME="${BASH_REMATCH[4]}"
@@ -174,7 +191,8 @@ if [ -d "${SSL_TRUSTS_DIR}" ] ; then
 				fi
 				is_valid_hostname "${HOST_NAME}" || fail "\tInvalid host name [${HOST_NAME}] in spec: [${SERVER}] from [${CERT}]"
 				is_valid_port "${PORT}" || fail "\tInvalid port number [${PORT}] in spec: [${SERVER}] from [${CERT}]"
-				download_authorities "${HOST_NAME}" "${SERVER_NAME}" "${PORT}" "${ANCHORS}" || fail "\tFailed to download the certificate from [${SERVER}] from [${CERT}]"
+				say "\tDownloading the certificate [${CERT}] from the server [${SERVER}]..."
+				download_from_port "${HOST_NAME}" "${SERVER_NAME}" "${PORT}" "${ANCHORS}" || fail "\tFailed to download the certificate from [${SERVER}] from [${CERT}]"
 				;;
 
 			* )
