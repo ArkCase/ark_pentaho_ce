@@ -69,6 +69,10 @@ export CATALINA_OUT
 ###################################################################
 CATALINA_OPTS+=" -Xms2048m -Xmx6144m -Dsun.rmi.dgc.client.gcInterval=3600000 -Dsun.rmi.dgc.server.gcInterval=3600000 -Dfile.encoding=utf8 -Djava.locale.providers=COMPAT,SPI -DDI_HOME='${DI_HOME}'"
 [ -z "${PENTAHO_INSTALLED_LICENSE_PATH}" ] || CATALINA_OPTS+=" -Dpentaho.installed.licenses.file='${PENTAHO_INSTALLED_LICENSE_PATH}'"
+
+# The cluster ID will be the pod's hostname
+CATALINA_OPTS+=" -Dorg.apache.jackrabbit.core.cluster.node_id='$(hostname)'"
+
 # We're done configuring Tomcat
 export CATALINA_OPTS
 
