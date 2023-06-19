@@ -76,6 +76,7 @@ RUN yum -y update && \
         openssl \
         sudo \
         unzip \
+        xmlstarlet \
     && \
     yum -y clean all
 
