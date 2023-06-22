@@ -67,7 +67,9 @@ export CATALINA_OUT
 ###################################################################
 # FINAL TOMCAT CONFIGURATIONS                                     #
 ###################################################################
-CATALINA_OPTS+=" -Xms2048m -Xmx6144m -Dsun.rmi.dgc.client.gcInterval=3600000 -Dsun.rmi.dgc.server.gcInterval=3600000 -Dfile.encoding=utf8 -Djava.locale.providers=COMPAT,SPI -DDI_HOME='${DI_HOME}'"
+[ -v CATALINA_MEM_OPTS ] || CATALINA_MEM_OPTS="-Xms2048m -Xmx6144m"
+
+CATALINA_OPTS+="${CATALINA_MEM_OPTS} -Dsun.rmi.dgc.client.gcInterval=3600000 -Dsun.rmi.dgc.server.gcInterval=3600000 -Dfile.encoding=utf8 -Djava.locale.providers=COMPAT,SPI -DDI_HOME='${DI_HOME}'"
 [ -z "${PENTAHO_INSTALLED_LICENSE_PATH}" ] || CATALINA_OPTS+=" -Dpentaho.installed.licenses.file='${PENTAHO_INSTALLED_LICENSE_PATH}'"
 
 # The cluster ID will be the pod's hostname
