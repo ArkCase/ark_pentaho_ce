@@ -14,6 +14,8 @@ ARG BLD="02"
 ARG PENTAHO_INSTALL_REPO="arkcase/pentaho-ce-install"
 ARG LB_VER="4.20.0"
 ARG LB_SRC="https://github.com/liquibase/liquibase/releases/download/v${LB_VER}/liquibase-${LB_VER}.tar.gz"
+ARG CW_VER="1.2.1"
+ARG CW_SRC="https://project.armedia.com/nexus/repository/arkcase/com/armedia/acm/curator-wrapper/${CW_VER}/curator-wrapper-${CW_VER}-exe.jar"
 
 FROM "${PUBLIC_REGISTRY}/${PENTAHO_INSTALL_REPO}:${VER}" as src
 
@@ -24,8 +26,8 @@ ARG BASE_TAG
 FROM "${PUBLIC_REGISTRY}/${BASE_REPO}:${BASE_TAG}"
 
 ARG VER
-ARG LB_VER
 ARG LB_SRC
+ARG CW_SRC
 
 ENV JAVA_HOME="/usr/lib/jvm/jre-11-openjdk"
 
@@ -119,6 +121,8 @@ RUN curl -L -o "${LB_TAR}" "${LB_SRC}" && \
         "internal/lib"
 COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} liquibase.properties "${LB_DIR}/"
 COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} "sql/${VER}" "${LB_DIR}/pentaho/"
+
+RUN curl -L -o "/usr/local/bin/curator-wrapper.jar" "${CW_SRC}"
 
 USER "${PENTAHO_USER}"
 
