@@ -10,11 +10,11 @@ ARG PUBLIC_REGISTRY="public.ecr.aws"
 ARG BASE_REPO="arkcase/base"
 ARG BASE_TAG="8.7.0"
 ARG VER="9.4.0.0-343"
-ARG BLD="03"
+ARG BLD="04"
 ARG PENTAHO_INSTALL_REPO="arkcase/pentaho-ce-install"
 ARG LB_VER="4.20.0"
 ARG LB_SRC="https://github.com/liquibase/liquibase/releases/download/v${LB_VER}/liquibase-${LB_VER}.tar.gz"
-ARG CW_VER="1.4.3"
+ARG CW_VER="1.4.4"
 ARG CW_SRC="https://project.armedia.com/nexus/repository/arkcase/com/armedia/acm/curator-wrapper/${CW_VER}/curator-wrapper-${CW_VER}-exe.jar"
 
 FROM "${PUBLIC_REGISTRY}/${PENTAHO_INSTALL_REPO}:${VER}" as src
