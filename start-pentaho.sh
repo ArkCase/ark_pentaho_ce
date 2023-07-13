@@ -75,6 +75,9 @@ CATALINA_OPTS+=" ${CATALINA_MEM_OPTS} -Dsun.rmi.dgc.client.gcInterval=3600000 -D
 # The cluster ID will be the pod's hostname
 CATALINA_OPTS+=" -Dorg.apache.jackrabbit.core.cluster.node_id='$(hostname)'"
 
+# Set the location for the Karaf cache
+CATALINA_OPTS+=" -Dpentaho.karaf.root.copy.dest.folder='${DATA_DIR}/karaf' -Dpentaho.karaf.root.transient=false"
+
 # We're done configuring Tomcat
 export CATALINA_OPTS
 
