@@ -73,7 +73,7 @@ install_chain() {
 			say "\tInstalling certificate: ${SUBJECT}"
 			[ "${SUBJECT}" != "${ISSUER}" ] && say "\tIssued by: ${ISSUER}"
 			local TGT_NAME="${CERT_BASE_NAME}.${n##*/}.pem"
-			/usr/bin/mv -f "${n}" "${TGT_NAME}"
+			/usr/bin/mv -f "${n}" "${ANCHORS}/${TGT_NAME}"
 		else
 			/usr/bin/rm -f "${n}" &>/dev/null
 		fi
@@ -168,7 +168,7 @@ if [ -d "${SSL_TRUSTS_DIR}" ] ; then
 			# If the data is an actual certificate, copy it verbatim
 			*.pem )
 				say "\tDeploying certificate [${CERT}]..."
-				install_chain "${CERT%.*}" < "${cert}"
+				install_chain "${ANCHORS}/${CERT%.*}" < "${cert}"
 				;;
 
 			# If the data is a URL, then try to pull it down and put the resulting file into
@@ -177,7 +177,7 @@ if [ -d "${SSL_TRUSTS_DIR}" ] ; then
 				URL="$(<"${cert}")"
 				[[ "${URL}" =~ ^([^:/?#]+)://([^/?#]*)?([^?#]*)([?]([^#]*))?(#(.*))?$ ]] || fail "\tThe certificate [${CERT}] is invalid - the URL syntax is invalid: [${URL}]"
 				say "\tDownloading the certificate [${CERT}] from [${URL}]..."
-				download_chain "${CERT%.*}" "${URL}" || fail "\tFailed to download the certificate [${CERT}] from the URL [${URL}]"
+				download_chain "${ANCHORS}/${CERT%.*}" "${URL}" || fail "\tFailed to download the certificate [${CERT}] from the URL [${URL}]"
 				;;
 
 			*.ssl )
