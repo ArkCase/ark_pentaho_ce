@@ -79,6 +79,7 @@ RUN yum -y update && \
         jq \
         openssl \
         sudo \
+        tzdata-java \
         unzip \
         xmlstarlet \
     && \
