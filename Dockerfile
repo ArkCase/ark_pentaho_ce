@@ -10,7 +10,7 @@ ARG PUBLIC_REGISTRY="public.ecr.aws"
 ARG BASE_REPO="arkcase/base"
 ARG BASE_TAG="8.7.0"
 ARG VER="9.4.0.0-343"
-ARG BLD="06"
+ARG BLD="07"
 ARG PENTAHO_INSTALL_REPO="arkcase/pentaho-ce-install"
 ARG LB_VER="4.20.0"
 ARG LB_SRC="https://github.com/liquibase/liquibase/releases/download/v${LB_VER}/liquibase-${LB_VER}.tar.gz"
@@ -44,6 +44,7 @@ ENV LB_DIR="${BASE_DIR}/lb"
 ENV LB_TAR="${BASE_DIR}/lb.tar.gz"
 ENV PENTAHO_HOME="${BASE_DIR}/pentaho"
 ENV PENTAHO_PDI_HOME="${BASE_DIR}/pentaho-pdi"
+ENV PENTAHO_PDI_LIB="${PENTAHO_PDI_HOME}/data-integration/lib"
 ENV PENTAHO_SERVER="${PENTAHO_HOME}/pentaho-server"
 ENV PENTAHO_TOMCAT="${PENTAHO_SERVER}/tomcat"
 ENV PENTAHO_WEBAPP="${PENTAHO_TOMCAT}/webapps/pentaho"
@@ -121,6 +122,18 @@ RUN curl -L -o "${LB_TAR}" "${LB_SRC}" && \
         "internal/lib"
 COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} liquibase.properties "${LB_DIR}/"
 COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} "sql/${VER}" "${LB_DIR}/pentaho/"
+
+# Add the JDBC drivers to the PDI lib dir
+RUN rm -fv \
+        "${PENTAHO_PDI_LIB}"/postgresql*.jar \
+        && \
+    ln -sv \
+        "${PENTAHO_TOMCAT}/lib"/mysql-connector-j-*.jar \
+        "${PENTAHO_TOMCAT}/lib"/mariadb-java-client-*.jar \
+        "${PENTAHO_TOMCAT}/lib"/mssql-jdbc-*.jar \
+        "${PENTAHO_TOMCAT}/lib"/ojdbc11-*.jar \
+        "${PENTAHO_TOMCAT}/lib"/postgresql-*.jar \
+        "${PENTAHO_PDI_LIB}"
 
 RUN curl -L -o "/usr/local/bin/curator-wrapper.jar" "${CW_SRC}"
 
