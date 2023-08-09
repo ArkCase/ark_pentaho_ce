@@ -10,12 +10,14 @@ ARG PUBLIC_REGISTRY="public.ecr.aws"
 ARG BASE_REPO="arkcase/base"
 ARG BASE_TAG="8.7.0"
 ARG VER="9.4.0.0-343"
-ARG BLD="08"
+ARG BLD="09"
 ARG PENTAHO_INSTALL_REPO="arkcase/pentaho-ce-install"
 ARG LB_VER="4.20.0"
 ARG LB_SRC="https://github.com/liquibase/liquibase/releases/download/v${LB_VER}/liquibase-${LB_VER}.tar.gz"
 ARG CW_VER="1.4.4"
 ARG CW_SRC="https://project.armedia.com/nexus/repository/arkcase/com/armedia/acm/curator-wrapper/${CW_VER}/curator-wrapper-${CW_VER}-exe.jar"
+ARG GUCCI_VER="1.6.10"
+ARG GUCCI_SRC="https://github.com/noqcks/gucci/releases/download/${GUCCI_VER}/gucci-v${GUCCI_VER}-linux-amd64"
 
 FROM "${PUBLIC_REGISTRY}/${PENTAHO_INSTALL_REPO}:${VER}" as src
 
@@ -28,6 +30,7 @@ FROM "${PUBLIC_REGISTRY}/${BASE_REPO}:${BASE_TAG}"
 ARG VER
 ARG LB_SRC
 ARG CW_SRC
+ARG GUCCI_SRC
 
 ENV JAVA_HOME="/usr/lib/jvm/jre-11-openjdk"
 
@@ -102,7 +105,7 @@ RUN chmod 0640 /etc/sudoers.d/00-update-ssl && \
     chmod a+r "${PENTAHO_SERVER}/pentaho-solutions/system/repository.spring.xml" 
 
 # Install Liquibase, and add all the drivers
-RUN curl -L -o "${LB_TAR}" "${LB_SRC}" && \
+RUN curl -kL --fail -o "${LB_TAR}" "${LB_SRC}" && \
     mkdir -p "${LB_DIR}" && \
     tar -C "${LB_DIR}" -xzvf "${LB_TAR}" && \
     rm -rf "${LB_TAR}" && \
@@ -123,7 +126,11 @@ RUN curl -L -o "${LB_TAR}" "${LB_SRC}" && \
 COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} liquibase.properties "${LB_DIR}/"
 COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} "sql/${VER}" "${LB_DIR}/pentaho/"
 
-RUN curl -L -o "/usr/local/bin/curator-wrapper.jar" "${CW_SRC}"
+RUN curl -kL --fail -o "/usr/local/bin/curator-wrapper.jar" "${CW_SRC}"
+
+RUN curl -kL --fail -o "/usr/local/bin/gucci" "${GUCCI_SRC}" && \
+    chown root:root "/usr/local/bin/gucci" && \
+    chmod u=rwx,go=rx "/usr/local/bin/gucci"
 
 USER "${PENTAHO_USER}"
 
