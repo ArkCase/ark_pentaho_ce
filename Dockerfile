@@ -10,7 +10,7 @@ ARG PUBLIC_REGISTRY="public.ecr.aws"
 ARG BASE_REPO="arkcase/base"
 ARG BASE_TAG="8.7.0"
 ARG VER="9.4.0.0-343"
-ARG BLD="09"
+ARG BLD="10"
 ARG PENTAHO_INSTALL_REPO="arkcase/pentaho-ce-install"
 ARG LB_VER="4.20.0"
 ARG LB_SRC="https://github.com/liquibase/liquibase/releases/download/v${LB_VER}/liquibase-${LB_VER}.tar.gz"
@@ -118,6 +118,7 @@ RUN curl -kL --fail -o "${LB_TAR}" "${LB_SRC}" && \
         && \
     ln -sv \
         "${PENTAHO_TOMCAT}/lib"/mysql-connector-j-*.jar \
+        "${PENTAHO_TOMCAT}/lib"/mysql-legacy-driver-*.jar \
         "${PENTAHO_TOMCAT}/lib"/mariadb-java-client-*.jar \
         "${PENTAHO_TOMCAT}/lib"/mssql-jdbc-*.jar \
         "${PENTAHO_TOMCAT}/lib"/ojdbc11-*.jar \
