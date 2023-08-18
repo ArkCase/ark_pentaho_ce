@@ -113,9 +113,9 @@
                useBodyEncodingForURI="true">
         <UpgradeProtocol className="org.apache.coyote.http2.Http2Protocol" />
         <SSLHostConfig protocols="TLSv1.2" certificateVerification="none">
-            <Certificate certificateKeyFile="/.ssl/key.pem"
+            <Certificate certificateKeyFile="/.ssl/cert.pem"
                          certificateFile="/.ssl/cert.pem"
-                         certificateChainFile="/.ssl/tomcat-chain.pem"
+                         certificateChainFile="/.ssl/ca-chain.pem"
                          type="RSA" />
         </SSLHostConfig>
 
