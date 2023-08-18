@@ -31,8 +31,6 @@ ARG CW_SRC
 
 ENV JAVA_HOME="/usr/lib/jvm/jre-11-openjdk"
 
-ARG ACM_GID="10000"
-ARG ACM_GROUP="acm"
 ARG PENTAHO_PORT="8080"
 
 ENV BASE_DIR="/app"
@@ -66,7 +64,6 @@ LABEL ORG="Armedia LLC" \
       MAINTAINER="Armedia Devops Team <devops@armedia.com>"
 
 RUN mkdir -p "${BASE_DIR}" && \
-    groupadd --system --gid "${ACM_GID}" "${ACM_GROUP}" && \
     groupadd --system --gid "${PENTAHO_GID}" "${PENTAHO_GROUP}" && \
     useradd --system --uid "${PENTAHO_UID}" --gid "${PENTAHO_GID}" --groups "${ACM_GROUP}" --create-home --home-dir "${PENTAHO_HOME}" "${PENTAHO_USER}" 
 
