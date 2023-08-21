@@ -70,8 +70,7 @@ RUN mkdir -p "${BASE_DIR}" && \
 COPY --from=src --chown=${PENTAHO_USER}:${PENTAHO_GROUP} /home/pentaho/app/pentaho "${PENTAHO_HOME}/"
 COPY --from=src --chown=${PENTAHO_USER}:${PENTAHO_GROUP} /home/pentaho/app/pentaho-pdi "${PENTAHO_PDI_HOME}/"
 
-RUN yum -y update && \
-    yum -y install \
+RUN yum -y install \
         java-11-openjdk-devel \
         jq \
         openssl \
