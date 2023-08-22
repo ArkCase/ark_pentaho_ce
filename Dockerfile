@@ -12,12 +12,13 @@ ARG BASE_TAG="8.8-01"
 ARG VER="9.4.0.0-343"
 ARG BLD="11"
 ARG PENTAHO_INSTALL_REPO="arkcase/pentaho-ce-install"
+ARG PENTAHO_INSTALL_TAG="${VER}-01"
 ARG LB_VER="4.20.0"
 ARG LB_SRC="https://github.com/liquibase/liquibase/releases/download/v${LB_VER}/liquibase-${LB_VER}.tar.gz"
 ARG CW_VER="1.4.4"
 ARG CW_SRC="https://project.armedia.com/nexus/repository/arkcase/com/armedia/acm/curator-wrapper/${CW_VER}/curator-wrapper-${CW_VER}-exe.jar"
 
-FROM "${PUBLIC_REGISTRY}/${PENTAHO_INSTALL_REPO}:${VER}" as src
+FROM "${PUBLIC_REGISTRY}/${PENTAHO_INSTALL_REPO}:${PENTAHO_INSTALL_TAG}" as src
 
 ARG PUBLIC_REGISTRY
 ARG BASE_REPO
@@ -81,6 +82,7 @@ RUN yum -y install \
     yum -y clean all
 
 ENV PATH="${PENTAHO_SERVER}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ENV LD_LIBRARY_PATH="${PENTAHO_TOMCAT}/lib:${LD_LIBRARY_PATH}"
 
 COPY entrypoint /
 
