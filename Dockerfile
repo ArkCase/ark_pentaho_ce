@@ -72,6 +72,7 @@ COPY --from=src --chown=${PENTAHO_USER}:${PENTAHO_GROUP} /home/pentaho/app/penta
 COPY --from=src --chown=${PENTAHO_USER}:${PENTAHO_GROUP} /home/pentaho/app/pentaho-pdi "${PENTAHO_PDI_HOME}/"
 
 RUN yum -y install \
+        apr \
         java-11-openjdk-devel \
         jq \
         openssl \
