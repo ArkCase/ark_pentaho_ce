@@ -8,9 +8,9 @@
 
 ARG PUBLIC_REGISTRY="public.ecr.aws"
 ARG BASE_REPO="arkcase/base"
-ARG BASE_TAG="8.8-01"
+ARG BASE_TAG="8.8-02"
 ARG VER="9.4.0.0-343"
-ARG BLD="11"
+ARG BLD="12"
 ARG PENTAHO_INSTALL_REPO="arkcase/pentaho-ce-install"
 ARG PENTAHO_INSTALL_TAG="${VER}-01"
 ARG LB_VER="4.20.0"
@@ -72,6 +72,7 @@ COPY --from=src --chown=${PENTAHO_USER}:${PENTAHO_GROUP} /home/pentaho/app/penta
 COPY --from=src --chown=${PENTAHO_USER}:${PENTAHO_GROUP} /home/pentaho/app/pentaho-pdi "${PENTAHO_PDI_HOME}/"
 
 RUN yum -y install \
+        anacron \
         apr \
         java-11-openjdk-devel \
         jq \
