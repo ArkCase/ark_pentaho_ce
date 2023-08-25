@@ -10,7 +10,7 @@ ARG PUBLIC_REGISTRY="public.ecr.aws"
 ARG BASE_REPO="arkcase/base"
 ARG BASE_TAG="8.8-02"
 ARG VER="9.4.0.0-343"
-ARG BLD="12"
+ARG BLD="13"
 ARG PENTAHO_INSTALL_REPO="arkcase/pentaho-ce-install"
 ARG PENTAHO_INSTALL_TAG="${VER}-01"
 ARG LB_VER="4.20.0"
@@ -72,7 +72,7 @@ COPY --from=src --chown=${PENTAHO_USER}:${PENTAHO_GROUP} /home/pentaho/app/penta
 COPY --from=src --chown=${PENTAHO_USER}:${PENTAHO_GROUP} /home/pentaho/app/pentaho-pdi "${PENTAHO_PDI_HOME}/"
 
 RUN yum -y install \
-        anacron \
+        cronie \
         apr \
         java-11-openjdk-devel \
         jq \
@@ -121,6 +121,9 @@ COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} liquibase.properties "${LB_DIR}/"
 COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} "sql/${VER}" "${LB_DIR}/pentaho/"
 
 RUN curl -kL --fail -o "/usr/local/bin/curator-wrapper.jar" "${CW_SRC}"
+
+# Set cron SUID so we can run it as non-root
+RUN chmod ug+s /usr/sbin/crond
 
 USER "${PENTAHO_USER}"
 
