@@ -98,7 +98,7 @@ RUN chown "${PENTAHO_USER}:${PENTAHO_GROUP}" "${PENTAHO_TOMCAT}/conf"/* && \
     chmod a+r "${PENTAHO_SERVER}/pentaho-solutions/system/repository.spring.xml" 
 
 # Install Liquibase, and add all the drivers
-RUN curl -kL --fail -o "${LB_TAR}" "${LB_SRC}" && \
+RUN curl -L --fail -o "${LB_TAR}" "${LB_SRC}" && \
     mkdir -p "${LB_DIR}" && \
     tar -C "${LB_DIR}" -xzvf "${LB_TAR}" && \
     rm -rf "${LB_TAR}" && \
@@ -120,7 +120,7 @@ RUN curl -kL --fail -o "${LB_TAR}" "${LB_SRC}" && \
 COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} liquibase.properties "${LB_DIR}/"
 COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} "sql/${VER}" "${LB_DIR}/pentaho/"
 
-RUN curl -kL --fail -o "/usr/local/bin/curator-wrapper.jar" "${CW_SRC}"
+RUN curl -L --fail -o "/usr/local/bin/curator-wrapper.jar" "${CW_SRC}"
 
 # Set cron SUID so we can run it as non-root
 RUN chmod ug+s /usr/sbin/crond
