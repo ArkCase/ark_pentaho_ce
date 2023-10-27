@@ -7,24 +7,25 @@
 ###########################################################################################################
 
 ARG PUBLIC_REGISTRY="public.ecr.aws"
-ARG BASE_REPO="arkcase/base"
-ARG BASE_TAG="8-02"
 ARG VER="9.4.0.0-343"
-ARG BLD="13"
-ARG PENTAHO_INSTALL_REPO="arkcase/pentaho-ce-install"
-ARG PENTAHO_INSTALL_TAG="${VER}-01"
+
 ARG LB_VER="4.20.0"
 ARG LB_SRC="https://github.com/liquibase/liquibase/releases/download/v${LB_VER}/liquibase-${LB_VER}.tar.gz"
 ARG CW_VER="1.4.4"
 ARG CW_SRC="https://project.armedia.com/nexus/repository/arkcase/com/armedia/acm/curator-wrapper/${CW_VER}/curator-wrapper-${CW_VER}-exe.jar"
 
-FROM "${PUBLIC_REGISTRY}/${PENTAHO_INSTALL_REPO}:${PENTAHO_INSTALL_TAG}" as src
+ARG PENTAHO_INSTALL_REPO="arkcase/pentaho-ce-install"
+ARG PENTAHO_INSTALL_IMG="${PUBLIC_REGISTRY}/${PENTAHO_INSTALL_REPO}:${VER}"
 
-ARG PUBLIC_REGISTRY
-ARG BASE_REPO
-ARG BASE_TAG
+ARG BASE_REPO="arkcase/base"
+ARG BASE_VER="8"
+ARG BASE_IMG="${PUBLIC_REGISTRY}/${BASE_REPO}:${BASE_VER}"
 
-FROM "${PUBLIC_REGISTRY}/${BASE_REPO}:${BASE_TAG}"
+FROM "${PENTAHO_INSTALL_IMG}" as src
+
+ARG BASE_IMG
+
+FROM "${BASE_IMG}"
 
 ARG VER
 ARG LB_SRC
