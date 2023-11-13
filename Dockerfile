@@ -7,8 +7,9 @@
 ###########################################################################################################
 
 ARG PUBLIC_REGISTRY="public.ecr.aws"
-ARG VER="9.4.0.0-343"
+ARG VER="9.4.0.0"
 
+ARG PENTAHO_VERSION="${VER}-343"
 ARG LB_VER="4.20.0"
 ARG LB_SRC="https://github.com/liquibase/liquibase/releases/download/v${LB_VER}/liquibase-${LB_VER}.tar.gz"
 ARG CW_VER="1.4.4"
@@ -30,6 +31,7 @@ FROM "${BASE_IMG}"
 ARG VER
 ARG LB_SRC
 ARG CW_SRC
+ARG PENTAHO_VERSION
 
 ENV JAVA_HOME="/usr/lib/jvm/jre-11-openjdk"
 
@@ -57,7 +59,7 @@ ENV PENTAHO_USER="pentaho"
 ENV PENTAHO_UID="1998"
 ENV PENTAHO_GROUP="${PENTAHO_USER}"
 ENV PENTAHO_GID="${PENTAHO_UID}"
-ENV PENTAHO_VERSION="${VER}"
+ENV PENTAHO_VERSION="${PENTAHO_VERSION}"
 
 LABEL ORG="Armedia LLC" \
       APP="Pentaho EE" \
@@ -119,7 +121,7 @@ RUN curl -L --fail -o "${LB_TAR}" "${LB_SRC}" && \
         "${PENTAHO_TOMCAT}/lib"/postgresql-*.jar \
         "internal/lib"
 COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} liquibase.properties "${LB_DIR}/"
-COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} "sql/${VER}" "${LB_DIR}/pentaho/"
+COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} "sql/${PENTAHO_VERSION}" "${LB_DIR}/pentaho/"
 
 RUN curl -L --fail -o "/usr/local/bin/curator-wrapper.jar" "${CW_SRC}"
 
