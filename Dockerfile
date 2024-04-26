@@ -13,7 +13,7 @@ ARG PENTAHO_VERSION="${VER}-343"
 ARG LB_VER="4.20.0"
 ARG LB_SRC="https://github.com/liquibase/liquibase/releases/download/v${LB_VER}/liquibase-${LB_VER}.tar.gz"
 ARG CW_VER="1.4.4"
-ARG CW_SRC="https://project.armedia.com/nexus/repository/arkcase/com/armedia/acm/curator-wrapper/${CW_VER}/curator-wrapper-${CW_VER}-exe.jar"
+ARG CW_SRC="https://nexus.armedia.com/repository/arkcase/com/armedia/acm/curator-wrapper/${CW_VER}/curator-wrapper-${CW_VER}-exe.jar"
 
 ARG PENTAHO_INSTALL_REPO="arkcase/pentaho-ce-install"
 ARG PENTAHO_INSTALL_IMG="${PUBLIC_REGISTRY}/${PENTAHO_INSTALL_REPO}:${VER}"
