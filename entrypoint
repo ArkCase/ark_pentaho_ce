@@ -1,21 +1,9 @@
 #!/bin/bash
 
 set -euo pipefail
+. /.functions
 
-say() {
-	echo -e "$(date -Isec -u): ${@}"
-}
+require_dir "${PENTAHO_SERVER}"
+require_dir "${PENTAHO_TOMCAT}"
 
-fail() {
-	say "${@}" 1>&2
-	exit ${EXIT_CODE:-1}
-}
-
-[ -e "${PENTAHO_SERVER}" ] || fail "The Pentaho home directory could not be found at [${PENTAHO_SERVER}], cannot continue."
-[ -d "${PENTAHO_SERVER}" ] || fail "The path [${PENTAHO_SERVER}] is not a directory, cannot continue."
-[ -e "${PENTAHO_TOMCAT}" ] || fail "The Pentaho Tomcat directory could not be found at [${PENTAHO_TOMCAT}], cannot continue."
-[ -d "${PENTAHO_TOMCAT}" ] || fail "The path [${PENTAHO_TOMCAT}] is not a directory, cannot continue."
-
-# Run the launcher, which returns immediately
-say "Launching Pentaho..."
-exec "${PENTAHO_SERVER}/start-pentaho.sh"
+execute "${PENTAHO_SERVER}/start-pentaho.sh" "${@}"
