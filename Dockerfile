@@ -8,6 +8,7 @@
 
 ARG PUBLIC_REGISTRY="public.ecr.aws"
 ARG VER="9.4.0.0"
+ARG JAVA="11"
 
 ARG PENTAHO_VERSION="${VER}-343"
 ARG LB_VER="4.20.0"
@@ -19,7 +20,7 @@ ARG PENTAHO_INSTALL_REPO="arkcase/pentaho-ce-install"
 ARG PENTAHO_INSTALL_IMG="${PUBLIC_REGISTRY}/${PENTAHO_INSTALL_REPO}:${VER}"
 
 ARG BASE_REGISTRY="${PUBLIC_REGISTRY}"
-ARG BASE_REPO="arkcase/base"
+ARG BASE_REPO="arkcase/base-java"
 ARG BASE_VER="8"
 ARG BASE_VER_PFX=""
 ARG BASE_IMG="${BASE_REGISTRY}/${BASE_REPO}:${BASE_VER_PFX}${BASE_VER}"
@@ -31,11 +32,10 @@ ARG BASE_IMG
 FROM "${BASE_IMG}"
 
 ARG VER
+ARG JAVA
 ARG LB_SRC
 ARG CW_SRC
 ARG PENTAHO_VERSION
-
-ENV JAVA_HOME="/usr/lib/jvm/jre-11-openjdk"
 
 ARG PENTAHO_PORT="8080"
 
@@ -76,10 +76,10 @@ RUN mkdir -p "${BASE_DIR}" && \
 COPY --from=src --chown=${PENTAHO_USER}:${PENTAHO_GROUP} /home/pentaho/app/pentaho "${PENTAHO_HOME}/"
 COPY --from=src --chown=${PENTAHO_USER}:${PENTAHO_GROUP} /home/pentaho/app/pentaho-pdi "${PENTAHO_PDI_HOME}/"
 
-RUN yum -y install \
+RUN set-java "${JAVA}" && \
+    yum -y install \
         cronie \
         apr \
-        java-11-openjdk-devel \
         jq \
         openssl \
         sudo \
