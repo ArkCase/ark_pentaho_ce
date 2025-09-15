@@ -73,6 +73,11 @@ RUN mkdir -p "${BASE_DIR}" && \
     groupadd --system --gid "${PENTAHO_GID}" "${PENTAHO_GROUP}" && \
     useradd --system --uid "${PENTAHO_UID}" --gid "${PENTAHO_GID}" --groups "${ACM_GROUP}" --create-home --home-dir "${PENTAHO_HOME}" "${PENTAHO_USER}" 
 
+#
+# Make sure the user's HOME envvar points to the right place
+#
+ENV HOME="${PENTAHO_HOME}"
+
 COPY --from=src --chown=${PENTAHO_USER}:${PENTAHO_GROUP} /home/pentaho/app/pentaho "${PENTAHO_HOME}/"
 COPY --from=src --chown=${PENTAHO_USER}:${PENTAHO_GROUP} /home/pentaho/app/pentaho-pdi "${PENTAHO_PDI_HOME}/"
 
