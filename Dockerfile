@@ -14,7 +14,8 @@ ARG PENTAHO_VERSION="${VER}-343"
 ARG LB_VER="4.20.0"
 ARG LB_SRC="https://github.com/liquibase/liquibase/releases/download/v${LB_VER}/liquibase-${LB_VER}.tar.gz"
 ARG CW_VER="1.5.0"
-ARG CW_SRC="https://nexus.armedia.com/repository/arkcase/com/armedia/acm/curator-wrapper/${CW_VER}/curator-wrapper-${CW_VER}-exe.jar"
+ARG CW_REPO="https://nexus.armedia.com/repository/arkcase"
+ARG CW_SRC="com.armedia.acm:curator-wrapper:${CW_VER}:jar:exe"
 
 ARG PENTAHO_INSTALL_REPO="arkcase/pentaho-ce-install"
 ARG PENTAHO_INSTALL_IMG="${PUBLIC_REGISTRY}/${PENTAHO_INSTALL_REPO}:${VER}"
@@ -25,7 +26,17 @@ ARG BASE_VER="8"
 ARG BASE_VER_PFX=""
 ARG BASE_IMG="${BASE_REGISTRY}/${BASE_REPO}:${BASE_VER_PFX}${BASE_VER}"
 
+ARG TOMCAT_REGISTRY="${BASE_REGISTRY}"
+ARG TOMCAT_REPO="arkcase/base-tomcat"
+ARG TOMCAT_VER="latest"
+ARG TOMCAT_VER_PFX=""
+ARG TOMCAT_IMG="${TOMCAT_REGISTRY}/${TOMCAT_REPO}:${TOMCAT_VER_PFX}${TOMCAT_VER}"
+
 FROM "${PENTAHO_INSTALL_IMG}" AS src
+
+ARG TOMCAT_IMG
+
+FROM "${TOMCAT_IMG}" AS tomcat
 
 ARG BASE_IMG
 
@@ -34,6 +45,7 @@ FROM "${BASE_IMG}"
 ARG VER
 ARG JAVA
 ARG LB_SRC
+ARG CW_REPO
 ARG CW_SRC
 ARG PENTAHO_VERSION
 
@@ -130,7 +142,9 @@ RUN curl -L --fail -o "${LB_TAR}" "${LB_SRC}" && \
 COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} liquibase.properties "${LB_DIR}/"
 COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} "sql/${PENTAHO_VERSION}" "${LB_DIR}/pentaho/"
 
-RUN curl -L --fail -o "/usr/local/bin/curator-wrapper.jar" "${CW_SRC}"
+RUN mvn-get "${CW_SRC}" "${CW_REPO}" "/usr/local/bin/curator-wrapper.jar"
+
+COPY --from=tomcat --chmod=0755 /usr/local/bin/set-session-cookie-name /usr/local/bin/
 
 # Set cron SUID so we can run it as non-root
 RUN chmod ug+s /usr/sbin/crond
