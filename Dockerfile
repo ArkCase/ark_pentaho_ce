@@ -13,7 +13,7 @@ ARG JAVA="11"
 ARG PENTAHO_VERSION="${VER}-343"
 ARG LB_VER="4.20.0"
 ARG LB_SRC="https://github.com/liquibase/liquibase/releases/download/v${LB_VER}/liquibase-${LB_VER}.tar.gz"
-ARG CW_VER="1.5.0"
+ARG CW_VER="1.8.0"
 ARG CW_REPO="https://nexus.armedia.com/repository/arkcase"
 ARG CW_SRC="com.armedia.acm:curator-wrapper:${CW_VER}:jar:exe"
 
