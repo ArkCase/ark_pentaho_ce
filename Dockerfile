@@ -63,10 +63,6 @@ ENV PENTAHO_PDI_LIB="${PENTAHO_PDI_HOME}/data-integration/lib"
 ENV PENTAHO_SERVER="${PENTAHO_HOME}/pentaho-server"
 ENV PENTAHO_TOMCAT="${PENTAHO_SERVER}/tomcat"
 ENV PENTAHO_WEBAPP="${PENTAHO_TOMCAT}/webapps/pentaho"
-ENV PENTAHO_LICENSE_DIR="${PENTAHO_HOME}/licenses"
-ENV PENTAHO_LICENSE_ARCHIVE="pentaho-server-licenses-${PENTAHO_SERVER_LICENSES}.zip"
-ENV PENTAHO_LICENSE_INSTALLER="${PENTAHO_HOME}/license-installer/license-installer.sh"
-ENV PENTAHO_PDI_LICENSE_INSTALLER="${PENTAHO_PDI_HOME}/license-installer/license-installer.sh"
 ENV PENTAHO_USER="pentaho"
 ENV PENTAHO_UID="1998"
 ENV PENTAHO_GROUP="${PENTAHO_USER}"
@@ -99,7 +95,7 @@ RUN set-java "${JAVA}" && \
     apt-get clean
 
 ENV PATH="${PENTAHO_SERVER}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-ENV LD_LIBRARY_PATH="${PENTAHO_TOMCAT}/lib:${LD_LIBRARY_PATH}"
+ENV LD_LIBRARY_PATH="${PENTAHO_TOMCAT}/lib"
 
 COPY entrypoint /
 
