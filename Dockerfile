@@ -50,15 +50,21 @@ ARG CW_SRC
 ARG PENTAHO_VERSION
 
 ARG PENTAHO_PORT="8080"
+ENV PENTAHO_USER="pentaho"
+ENV PENTAHO_UID="1998"
+ENV PENTAHO_GROUP="${PENTAHO_USER}"
+ENV PENTAHO_GID="${PENTAHO_UID}"
 
 ENV BASE_DIR="/app"
 ENV LOGS_DIR="${BASE_DIR}/logs"
 ENV DATA_DIR="${BASE_DIR}/data"
 ENV WORK_DIR="${DATA_DIR}/work"
 ENV TEMP_DIR="${DATA_DIR}/temp"
+ENV HOME_DIR="${BASE_DIR}/${PENTAHO_USER}"
 ENV LB_DIR="${BASE_DIR}/lb"
 ENV LB_TAR="${BASE_DIR}/lb.tar.gz"
-ENV PENTAHO_HOME="${BASE_DIR}/pentaho"
+
+ENV PENTAHO_HOME="${HOME_DIR}"
 ENV PENTAHO_PDI_HOME="${BASE_DIR}/pentaho-pdi"
 ENV PENTAHO_PDI_LIB="${PENTAHO_PDI_HOME}/data-integration/lib"
 ENV PENTAHO_SERVER="${PENTAHO_HOME}/pentaho-server"
@@ -69,10 +75,6 @@ ENV PENTAHO_LICENSE_DIR="${PENTAHO_HOME}/licenses"
 ENV PENTAHO_LICENSE_ARCHIVE="pentaho-server-licenses-${PENTAHO_SERVER_LICENSES}.zip"
 ENV PENTAHO_LICENSE_INSTALLER="${PENTAHO_HOME}/license-installer/license-installer.sh"
 ENV PENTAHO_PDI_LICENSE_INSTALLER="${PENTAHO_PDI_HOME}/license-installer/license-installer.sh"
-ENV PENTAHO_USER="pentaho"
-ENV PENTAHO_UID="1998"
-ENV PENTAHO_GROUP="${PENTAHO_USER}"
-ENV PENTAHO_GID="${PENTAHO_UID}"
 ENV PENTAHO_VERSION="${PENTAHO_VERSION}"
 
 LABEL ORG="Armedia LLC" \
@@ -150,6 +152,8 @@ COPY --from=tomcat --chmod=0755 /usr/local/bin/set-session-cookie-name /usr/loca
 RUN chmod ug+s /usr/sbin/crond
 
 USER "${PENTAHO_USER}"
+
+RUN mkdir -p "${HOME_DIR}/.postgresql" && ln -svf "${CA_TRUSTS_PEM}" "${HOME_DIR}/.postgresql/root.crt"
 
 VOLUME [ "${DATA_DIR}" ]
 VOLUME [ "${LOGS_DIR}" ]
