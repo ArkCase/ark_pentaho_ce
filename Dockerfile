@@ -51,22 +51,23 @@ ARG CW_SRC
 ARG PENTAHO_VERSION
 
 ARG PENTAHO_PORT="8080"
+ENV PENTAHO_USER="pentaho"
+ENV PENTAHO_UID="1998"
+ENV PENTAHO_GROUP="${PENTAHO_USER}"
+ENV PENTAHO_GID="${PENTAHO_UID}"
 
 ENV WORK_DIR="${DATA_DIR}/work"
 ENV TEMP_DIR="${DATA_DIR}/temp"
+ENV HOME_DIR="${BASE_DIR}/${PENTAHO_USER}"
 ENV LB_DIR="${BASE_DIR}/lb"
 ENV LB_TAR="${BASE_DIR}/lb.tar.gz"
 
-ENV PENTAHO_HOME="${BASE_DIR}/pentaho"
+ENV PENTAHO_HOME="${HOME_DIR}"
 ENV PENTAHO_PDI_HOME="${BASE_DIR}/pentaho-pdi"
 ENV PENTAHO_PDI_LIB="${PENTAHO_PDI_HOME}/data-integration/lib"
 ENV PENTAHO_SERVER="${PENTAHO_HOME}/pentaho-server"
 ENV PENTAHO_TOMCAT="${PENTAHO_SERVER}/tomcat"
 ENV PENTAHO_WEBAPP="${PENTAHO_TOMCAT}/webapps/pentaho"
-ENV PENTAHO_USER="pentaho"
-ENV PENTAHO_UID="1998"
-ENV PENTAHO_GROUP="${PENTAHO_USER}"
-ENV PENTAHO_GID="${PENTAHO_UID}"
 ENV PENTAHO_VERSION="${PENTAHO_VERSION}"
 
 LABEL ORG="Armedia LLC" \
@@ -139,6 +140,8 @@ COPY --from=tomcat --chmod=0755 /usr/local/bin/set-session-cookie-name /usr/loca
 RUN chmod ug+s /usr/sbin/cron
 
 USER "${PENTAHO_USER}"
+
+RUN mkdir -p "${HOME_DIR}/.postgresql" && ln -svf "${CA_TRUSTS_PEM}" "${HOME_DIR}/.postgresql/root.crt"
 
 VOLUME [ "${DATA_DIR}" ]
 VOLUME [ "${LOGS_DIR}" ]
