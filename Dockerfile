@@ -104,10 +104,12 @@ COPY "server.xml" "logging.properties" "catalina.properties" "${PENTAHO_TOMCAT}/
 COPY start-pentaho.sh "${PENTAHO_SERVER}/"
 COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} repository.spring.xml "${PENTAHO_SERVER}/pentaho-solutions/system/"
 RUN chown "${PENTAHO_USER}:${PENTAHO_GROUP}" "${PENTAHO_TOMCAT}/conf"/* && \
-    chmod u=rwX,go=r "${PENTAHO_TOMCAT}/conf"/* && \
+    chmod "u=rwX,go=r" "${PENTAHO_TOMCAT}/conf"/* && \
     rm -f "${PENTAHO_SERVER}/promptuser.sh" "${PENTAHO_SERVER}"/*.bat "${PENTAHO_SERVER}"/*.js && \
-    chmod 0755 "${PENTAHO_SERVER}"/*.sh  && \
-    chmod a+r "${PENTAHO_SERVER}/pentaho-solutions/system/repository.spring.xml" 
+    chmod "u=rwX,g=rX,o=" "${PENTAHO_SERVER}"/*.sh  && \
+    chmod a+r "${PENTAHO_SERVER}/pentaho-solutions/system/repository.spring.xml" && \
+    chmod "u=rwX,g=r,o=" "${PENTAHO_HOME}"/.* && \
+    chown root "${PENTAHO_SERVER}"
 
 # Install Liquibase, and add all the drivers
 RUN curl -L --fail -o "${LB_TAR}" "${LB_SRC}" && \
