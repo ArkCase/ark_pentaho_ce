@@ -101,19 +101,21 @@ ENV LD_LIBRARY_PATH="${PENTAHO_TOMCAT}/lib"
 
 COPY entrypoint /
 
-COPY "server.xml" "logging.properties" "catalina.properties" "${PENTAHO_TOMCAT}/conf/"
-COPY start-pentaho.sh "${PENTAHO_SERVER}/"
-COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} repository.spring.xml "${PENTAHO_SERVER}/pentaho-solutions/system/"
-RUN chown "${PENTAHO_USER}:${PENTAHO_GROUP}" "${PENTAHO_TOMCAT}/conf"/* && \
+COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} --chmod=0640 "server.xml" "logging.properties" "catalina.properties" "${PENTAHO_TOMCAT}/conf/"
+COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} --chmod=0750 start-pentaho.sh "${PENTAHO_SERVER}/"
+COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} --chmod=0640 repository.spring.xml "${PENTAHO_SERVER}/pentaho-solutions/system/"
+RUN chown -R "${PENTAHO_UID}:${PENTAHO_GID}" "${BASE_DIR}"/* && \
+    chmod -R "u=rwX,g=rX,o=" "${BASE_DIR}"/* && \
+    chown "${PENTAHO_USER}:${PENTAHO_GROUP}" "${PENTAHO_TOMCAT}/conf"/* && \
     chmod "u=rwX,go=r" "${PENTAHO_TOMCAT}/conf"/* && \
     rm -f "${PENTAHO_SERVER}/promptuser.sh" "${PENTAHO_SERVER}"/*.bat "${PENTAHO_SERVER}"/*.js && \
     chmod "u=rwX,g=rX,o=" "${PENTAHO_SERVER}"/*.sh  && \
-    chmod a+r "${PENTAHO_SERVER}/pentaho-solutions/system/repository.spring.xml" && \
     find "${PENTAHO_HOME}" -mindepth 1 -maxdepth 1 -type f -name '.*' -exec chmod "u=rwX,g=r,o=" "{}" ";" && \
     chown root "${PENTAHO_SERVER}"
 
 # Install Liquibase, and add all the drivers
-RUN curl -L --fail -o "${LB_TAR}" "${LB_SRC}" && \
+RUN umask 0027 && \
+    curl -L --fail -o "${LB_TAR}" "${LB_SRC}" && \
     mkdir -p "${LB_DIR}" && \
     tar -C "${LB_DIR}" -xzvf "${LB_TAR}" && \
     rm -rf "${LB_TAR}" && \
@@ -123,7 +125,7 @@ RUN curl -L --fail -o "${LB_TAR}" "${LB_SRC}" && \
         "internal/lib/ojdbc8.jar" \
         "internal/lib/mariadb-java-client.jar" \
         "internal/lib/postgresql.jar" \
-        && \
+      && \
     ln -sv \
         "${PENTAHO_TOMCAT}/lib"/mysql-connector-j-*.jar \
         "${PENTAHO_TOMCAT}/lib"/mysql-legacy-driver-*.jar \
@@ -132,8 +134,11 @@ RUN curl -L --fail -o "${LB_TAR}" "${LB_SRC}" && \
         "${PENTAHO_TOMCAT}/lib"/ojdbc11-*.jar \
         "${PENTAHO_TOMCAT}/lib"/postgresql-*.jar \
         "internal/lib"
+
 COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} liquibase.properties "${LB_DIR}/"
 COPY --chown=${PENTAHO_USER}:${PENTAHO_GROUP} "sql/${PENTAHO_VERSION}" "${LB_DIR}/pentaho/"
+RUN chown -R "${PENTAHO_USER}:${PENTAHO_GROUP}" "${LB_DIR}" && \
+    chmod -R "o=" "${LB_DIR}"
 
 RUN mvn-get "${CW_SRC}" "${CW_REPO}" "/usr/local/bin/curator-wrapper.jar"
 
