@@ -77,6 +77,7 @@ LABEL ORG="Armedia LLC" \
       MAINTAINER="Armedia Devops Team <devops@armedia.com>"
 
 RUN mkdir -p "${BASE_DIR}" && \
+    chmod "u=rwx,go=rx" "${BASE_DIR}" && \
     groupadd --system --gid "${PENTAHO_GID}" "${PENTAHO_GROUP}" && \
     useradd --system --uid "${PENTAHO_UID}" --gid "${PENTAHO_GID}" --groups "${ACM_GROUP}" --create-home --home-dir "${PENTAHO_HOME}" "${PENTAHO_USER}" 
 
@@ -108,7 +109,7 @@ RUN chown "${PENTAHO_USER}:${PENTAHO_GROUP}" "${PENTAHO_TOMCAT}/conf"/* && \
     rm -f "${PENTAHO_SERVER}/promptuser.sh" "${PENTAHO_SERVER}"/*.bat "${PENTAHO_SERVER}"/*.js && \
     chmod "u=rwX,g=rX,o=" "${PENTAHO_SERVER}"/*.sh  && \
     chmod a+r "${PENTAHO_SERVER}/pentaho-solutions/system/repository.spring.xml" && \
-    chmod "u=rwX,g=r,o=" "${PENTAHO_HOME}"/.* && \
+    find "${PENTAHO_HOME}" -mindepth 1 -maxdepth 1 -type f -name '.*' -exec chmod "u=rwX,g=r,o=" "{}" ";" && \
     chown root "${PENTAHO_SERVER}"
 
 # Install Liquibase, and add all the drivers
@@ -141,9 +142,12 @@ COPY --from=tomcat --chmod=0755 /usr/local/bin/set-session-cookie-name /usr/loca
 # Set cron SUID so we can run it as non-root
 RUN chmod ug+s /usr/sbin/cron
 
-USER "${PENTAHO_USER}"
+RUN mkdir -p "${HOME_DIR}/.postgresql" && \
+    ln -svf "${CA_TRUSTS_PEM}" "${HOME_DIR}/.postgresql/root.crt" && \
+    chown -Rh "${PENTAHO_USER}:${PENTAHO_GROUP}" "${HOME_DIR}/.postgresql" && \
+    chmod -R "u=rwX,g=rX,o=" "${HOME_DIR}/.postgresql"
 
-RUN mkdir -p "${HOME_DIR}/.postgresql" && ln -svf "${CA_TRUSTS_PEM}" "${HOME_DIR}/.postgresql/root.crt"
+USER "${PENTAHO_USER}"
 
 VOLUME [ "${DATA_DIR}" ]
 VOLUME [ "${LOGS_DIR}" ]
