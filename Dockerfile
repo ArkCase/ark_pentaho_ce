@@ -80,7 +80,8 @@ LABEL ORG="Armedia LLC" \
 RUN mkdir -p "${BASE_DIR}" && \
     chmod "u=rwx,go=rx" "${BASE_DIR}" && \
     groupadd --system --gid "${PENTAHO_GID}" "${PENTAHO_GROUP}" && \
-    useradd --system --uid "${PENTAHO_UID}" --gid "${PENTAHO_GID}" --groups "${ACM_GROUP}" --create-home --home-dir "${PENTAHO_HOME}" "${PENTAHO_USER}" 
+    useradd --system --uid "${PENTAHO_UID}" --gid "${PENTAHO_GID}" --groups "${ACM_GROUP}" --create-home --home-dir "${PENTAHO_HOME}" "${PENTAHO_USER}" && \
+    mkdir -p "${PENTAHO_HOME}/.pentaho"
 
 #
 # Make sure the user's HOME envvar points to the right place
