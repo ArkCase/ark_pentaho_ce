@@ -6,6 +6,7 @@
 #
 ###########################################################################################################
 
+ARG FIPS=""
 ARG PUBLIC_REGISTRY="public.ecr.aws"
 ARG PRIVATE_REGISTRY
 ARG VER="9.4.0.0"
@@ -22,7 +23,7 @@ ARG BASE_REGISTRY="${PUBLIC_REGISTRY}"
 ARG BASE_REPO="arkcase/base-java"
 ARG BASE_VER="24.04"
 ARG BASE_VER_PFX=""
-ARG BASE_IMG="${BASE_REGISTRY}/${BASE_REPO}:${BASE_VER_PFX}${BASE_VER}"
+ARG BASE_IMG="${BASE_REGISTRY}/${BASE_REPO}${FIPS}:${BASE_VER_PFX}${BASE_VER}"
 
 ARG PENTAHO_INSTALL_REPO="arkcase/pentaho-ce-${VER%%.*}-install"
 ARG PENTAHO_INSTALL_IMG="${PRIVATE_REGISTRY}/${PENTAHO_INSTALL_REPO}:${BASE_VER_PFX}${VER}"
@@ -31,7 +32,7 @@ ARG TOMCAT_REGISTRY="${BASE_REGISTRY}"
 ARG TOMCAT_REPO="arkcase/base-tomcat"
 ARG TOMCAT_VER="latest"
 ARG TOMCAT_VER_PFX="${BASE_VER_PFX}"
-ARG TOMCAT_IMG="${TOMCAT_REGISTRY}/${TOMCAT_REPO}:${TOMCAT_VER_PFX}${TOMCAT_VER}"
+ARG TOMCAT_IMG="${TOMCAT_REGISTRY}/${TOMCAT_REPO}${FIPS}:${TOMCAT_VER_PFX}${TOMCAT_VER}"
 
 FROM "${PENTAHO_INSTALL_IMG}" AS src
 
@@ -79,7 +80,8 @@ LABEL ORG="Armedia LLC" \
 RUN mkdir -p "${BASE_DIR}" && \
     chmod "u=rwx,go=rx" "${BASE_DIR}" && \
     groupadd --system --gid "${PENTAHO_GID}" "${PENTAHO_GROUP}" && \
-    useradd --system --uid "${PENTAHO_UID}" --gid "${PENTAHO_GID}" --groups "${ACM_GROUP}" --create-home --home-dir "${PENTAHO_HOME}" "${PENTAHO_USER}" 
+    useradd --system --uid "${PENTAHO_UID}" --gid "${PENTAHO_GID}" --groups "${ACM_GROUP}" --create-home --home-dir "${PENTAHO_HOME}" "${PENTAHO_USER}" && \
+    mkdir -p "${PENTAHO_HOME}/.pentaho"
 
 #
 # Make sure the user's HOME envvar points to the right place
